@@ -1,0 +1,13 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for MicroK8S
+microk8s_plugins:
+  dns: true                                # CoreDNS
+  ingress: true                           # Ingress controller for external access
+  dashboard: true                         # The Kubernetes dashboard
+
+ufw:
+  enabled: true
+  kubectl_port: 16443
+  ingress_port: 
+    - 443

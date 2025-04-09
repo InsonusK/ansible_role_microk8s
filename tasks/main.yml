@@ -1,0 +1,7 @@
+---
+- name: Apt install
+  include_tasks: install_microk8s.yaml
+- name: Setup plugins
+  include_tasks: setup_plugins.yaml
+- name: Setup plugins
+  include_tasks: setup_ufw.yaml

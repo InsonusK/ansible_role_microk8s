@@ -1,0 +1,24 @@
+name: Publish to Ansible Galaxy
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish Role to Ansible Galaxy
+    runs-on: ubuntu-latest
+    container: alpine/ansible
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ansible Galaxy CLI
+        run: ansible-galaxy --version
+
+      - name: Publish to Ansible Galaxy
+        env:
+          ANSIBLE_GALAXY_API_KEY: ${{ secrets.ANSIBLE_API_TOKEN }}
+        run: |
+          ansible-galaxy role import --token $ANSIBLE_GALAXY_API_KEY --branch master --role-name MicroK8S InsonusK ansible_role_microk8s
+          
