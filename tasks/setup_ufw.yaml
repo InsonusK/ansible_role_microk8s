@@ -1,38 +1,35 @@
 ---
-- name: Setup UFW
-  when: ufw.enabled
-  block:
-  - name: Allow MicroK8s kubectl port through UFW 
-    ufw:
-      rule: allow
-      port: "{{ ufw.kubectl_port }}"
-      proto: tcp
-    when: ufw.kubectl_port is defined
+- name: Allow MicroK8s kubectl port through UFW 
+  ufw:
+    rule: allow
+    port: "{{ ufw.kubectl_port }}"
+    proto: tcp
+  when: ufw.kubectl_port is defined
 
-  - name: Allow ingress ports through UFW 
-    ufw:
-      rule: allow
-      port: "{{ item }}"
-      proto: tcp
-    loop: "{{ ufw.ingress_port | default([]) }}"
+- name: Allow ingress ports through UFW 
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: "{{ ufw.ingress_port | default([]) }}"
 
-  - name: Allow traffic on cni0 
-    ufw:
-      rule: allow
-      interface: cni0
-      direction: in
+- name: Allow traffic on cni0 
+  ufw:
+    rule: allow
+    interface: cni0
+    direction: in
 
-  - name: Allow routed traffic
-    ufw:
-      rule: allow
-      route: yes
+- name: Allow routed traffic
+  ufw:
+    rule: allow
+    route: yes
 
-  - name: Set default forward policy to allow
-    ufw:
-      direction: routed
-      policy: allow
+- name: Set default forward policy to allow
+  ufw:
+    direction: routed
+    policy: allow
 
-  - name: Enable UFW
-    ufw:
-      state: enabled
-    notify: reload ufw
+- name: Enable UFW
+  ufw:
+    state: enabled
+  notify: reload ufw
