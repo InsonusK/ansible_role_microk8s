@@ -7,6 +7,6 @@
 - name: Add user to microk8s group
   user:
     name: "{{ ansible_user }}"
-    group: microk8s
+    groups: microk8s
     append: yes
 
