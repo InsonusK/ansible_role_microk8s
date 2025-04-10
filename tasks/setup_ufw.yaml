@@ -1,5 +1,6 @@
 ---
 - name: Allow MicroK8s kubectl port through UFW 
+  become: true
   ufw:
     rule: allow
     port: "{{ ufw.kubectl_port }}"
@@ -7,6 +8,7 @@
   when: ufw.kubectl_port is defined
 
 - name: Allow ingress ports through UFW 
+  become: true
   ufw:
     rule: allow
     port: "{{ item }}"
@@ -14,22 +16,26 @@
   loop: "{{ ufw.ingress_port | default([]) }}"
 
 - name: Allow traffic on cni0 
+  become: true
   ufw:
     rule: allow
     interface: cni0
     direction: in
 
 - name: Allow routed traffic
+  become: true
   ufw:
     rule: allow
     route: yes
 
 - name: Set default forward policy to allow
+  become: true
   ufw:
     direction: routed
     policy: allow
 
 - name: Enable UFW
+  become: true
   ufw:
     state: enabled
   notify: reload ufw

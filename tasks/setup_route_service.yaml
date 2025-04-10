@@ -8,16 +8,19 @@
   notify: systemd updated
 
 - name: Restart systemd
+  become: true
   systemd:
     daemon_reload: true
 
 - name: Enable awg-quick service
+  become: true
   systemd:
     name: add-route.service
     enabled: true
     state: started
 
 - name: Assert awg-quick service is running
+  become: true
   systemd:
     name: add-route.service
     state: started
