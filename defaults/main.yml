@@ -10,6 +10,6 @@ ufw:                    #Setup UFW when installed
   ingress_port:         #ingress ports
     - 443
 
-route_service:          #routing 10.152.183.0/24 into local network, bug fix when k8s inner trafic goes into VPN
+route_service:          #routing 10.152.183.0/24 into local network - bug fix when k8s inner trafic goes into VPN
   enabled: true         #feature toggle
   interface: enp0s3     #local network interface
