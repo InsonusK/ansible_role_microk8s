@@ -9,3 +9,5 @@
 - name:  Setup route-service
   when: route_service.enabled
   include_tasks: setup_route_service.yaml
+- name:  Assert MicroK8S is runnunt 
+  include_tasks: setup_route_service.yaml
