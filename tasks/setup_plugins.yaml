@@ -2,7 +2,7 @@
 - name: get current addons state
   become: true
   command:
-    cmd: "{{ microk8s_bin_path }}microk8s.status --format yaml"
+    cmd: "microk8s.status --format yaml"
   changed_when: no
   register: microk8s_status
   check_mode: no
@@ -17,7 +17,7 @@
   loop_control:
     label: "{{ item.name }}"
   command:
-    cmd: "{{ microk8s_bin_path }}microk8s.enable {{ item.name }}{% if microk8s_plugins[item.name] != True %}:{{ microk8s_plugins[item.name] }}{% endif %}"
+    cmd: "microk8s.enable {{ item.name }}{% if microk8s_plugins[item.name] != True %}:{{ microk8s_plugins[item.name] }}{% endif %}"
   when:
     - item.status == 'disabled'
     - item.name in microk8s_plugins
@@ -29,7 +29,7 @@
   loop_control:
     label: "{{ item.name }}"
   command:
-    cmd: "{{ microk8s_bin_path }}microk8s.disable {{ item.name }}"
+    cmd: "microk8s.disable {{ item.name }}"
   when:
     - item.status == 'enabled'
     - item.name in microk8s_plugins

@@ -1,31 +1,33 @@
 - name: Copy Template file
+  become: true
   template:
     src: route-service.j2
     dest: /etc/systemd/system/add-route.service
     owner: root
     group: root
     mode: '0644'
-  notify: systemd updated
 
 - name: Restart systemd
   become: true
   systemd:
     daemon_reload: true
 
-- name: Enable awg-quick service
+- name: Enable add-route service
   become: true
   systemd:
     name: add-route.service
     enabled: true
     state: started
 
-- name: Assert awg-quick service is running
+- name: Assert add-route service is running
   become: true
   systemd:
     name: add-route.service
     state: started
   register: service_status
-  failed_when: service_status.status["ActiveState"] != "active"
-  changed_when: false
-  retries: 5
-  delay: 10
+  failed_when: service_status.status["ExecMainStatus"] != "0"
+  
+- name: Check if route exists
+  command: ip route show 10.152.183.0/24
+  register: route_check
+  failed_when: route_check.rc != 0
