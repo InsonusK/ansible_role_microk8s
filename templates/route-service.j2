@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/ip route add 10.152.183.0/24 dev {{route_service.interface}} proto static
+ExecStart=/usr/sbin/ip route replace 10.152.183.0/24 dev {{route_service.interface}} proto static
 
 [Install]
 WantedBy=multi-user.target

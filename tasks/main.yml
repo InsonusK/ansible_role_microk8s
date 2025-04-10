@@ -1,13 +1,13 @@
 ---
 - name: Apt install
   include_tasks: install_microk8s.yaml
-- name: Setup plugins
-  include_tasks: setup_plugins.yaml
 - name: Setup ufw
   when: ufw.enabled
   include_tasks: setup_ufw.yaml
 - name:  Setup route-service
   when: route_service.enabled
   include_tasks: setup_route_service.yaml
-- name:  Assert MicroK8S is runnunt 
-  include_tasks: setup_route_service.yaml
+- name:  Assert MicroK8S is running
+  include_tasks: assert_is_running.yaml
+- name: Setup plugins
+  include_tasks: setup_plugins.yaml
