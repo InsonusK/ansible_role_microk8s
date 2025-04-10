@@ -3,5 +3,6 @@
   include_tasks: install_microk8s.yaml
 - name: Setup plugins
   include_tasks: setup_plugins.yaml
-- name: Setup plugins
+- name: Setup ufw
+  when: ufw.enabled
   include_tasks: setup_ufw.yaml
