@@ -30,6 +30,9 @@ ufw:                    #Setup UFW when installed
 route_service:          #routing 10.152.183.0/24 into local network, bug fix when k8s inner trafic goes into VPN
   enabled: true         #feature toggle
   interface: enp0s3     #local network interface
+
+add_to_local_kubectl:
+  enabled: true         #feature toggle
 ```
 
 Dependencies
