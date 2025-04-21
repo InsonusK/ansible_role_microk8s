@@ -1,17 +1,24 @@
 ---
+- name: Assert usecase
+  assert:
+    that:
+      - usecase in exist_usecases
+    fail_msg: "Incorrect value of usecase: {{ usecase }}. Allowed values: {{ exist_usecases | join(', ') }}."
+    success_msg: "usecase is correct: {{ usecase }}."
 - name: Apt install
+  when: usecase == "install"
   include_tasks: install_microk8s.yaml
 - name: Setup ufw
-  when: ufw.enabled
+  when: usecase == "install" and ufw.enabled
   include_tasks: setup_ufw.yaml
 - name:  Setup route-service
-  when: route_service.enabled
+  when: usecase == "install" and route_service.enabled
   include_tasks: setup_route_service.yaml
 - name:  Assert MicroK8S is running
-  include_tasks: assert_is_running.yaml
+  include_tasks: usecase == "install" and assert_is_running.yaml
 - name: Setup plugins
-  when: microk8s_plugins.enabled
+  when: usecase == "install" and microk8s_plugins.enabled
   include_tasks: setup_plugins.yaml
-- name: add to localhost kubectl
-  when: add_to_local_kubectl.enabled
-  include_tasks: add_to_kubectl.yaml
+- name: get to kubeconfig
+  when: ( usecase == "install" or usecase == "get_kubeconfig" ) and get_kubeconfig.enabled
+  include_tasks: get_kubeconfig.yaml
