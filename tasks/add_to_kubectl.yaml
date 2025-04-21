@@ -1,0 +1,62 @@
+- name: Ensure we have host IP for replacement
+  ansible.builtin.set_fact:
+    microk8s_api_ip: "{{ hostvars[inventory_hostname]['ansible_host'] | default(inventory_hostname) }}"
+
+- name: Check if context already exists locally
+  delegate_to: localhost
+  ansible.builtin.command: >
+    kubectl config get-contexts -o name
+  register: local_contexts
+  failed_when: false
+  changed_when: false
+- name: Set flag if context exists
+  set_fact:
+    context_exists: "{{ 'microk8s-' + inventory_hostname in local_contexts.stdout_lines }}"
+
+- name: Handle kubeconfig setup if context does not exist
+  when: not context_exists
+  block:
+  - name: Get raw kubeconfig from microk8s
+    ansible.builtin.command: microk8s kubectl config view --raw
+    register: raw_kubeconfig
+
+  - name: Save raw kubeconfig to local file
+    delegate_to: localhost
+    become: false
+    ansible.builtin.copy:
+      content: "{{ raw_kubeconfig.stdout }}"
+      dest: "{{ lookup('env','HOME') }}/.kube/kubeconfig_{{ inventory_hostname }}.raw"
+      mode: '0600'
+
+  - name: Fix cluster server IP and rename cluster
+    delegate_to: localhost
+    vars:
+      kubeconfig_input: "{{ lookup('file', lookup('env','HOME') + '/.kube/kubeconfig_' + inventory_hostname + '.raw') }}"
+      fixed_kubeconfig: >-
+        {{ kubeconfig_input
+          | regex_replace('server: https://[0-9\\.]+:\\d+', 'server: https://' ~ microk8s_api_ip ~ ':16443')
+          | regex_replace('name: microk8s-cluster', 'name: ' ~ inventory_hostname)
+          | regex_replace('cluster: microk8s-cluster', 'cluster: ' ~ inventory_hostname)
+        }}
+    ansible.builtin.copy:
+      content: "{{ fixed_kubeconfig }}"
+      dest: "{{ lookup('env','HOME') }}/.kube/kubeconfig_{{ inventory_hostname }}"
+      mode: '0600'
+
+  - name: Merge kubeconfig into ~/.kube/config using KUBECONFIG env
+    delegate_to: localhost
+    ansible.builtin.shell: |
+      KUBECONFIG={{ lookup('env','HOME') }}/.kube/config:{{ lookup('env','HOME') }}/.kube/kubeconfig_{{ inventory_hostname }} \
+      kubectl config view --flatten > {{ lookup('env','HOME') }}/.kube/config.merged && \
+      mv {{ lookup('env','HOME') }}/.kube/config.merged {{ lookup('env','HOME') }}/.kube/config
+    environment:
+      HOME: "{{ lookup('env','HOME') }}"
+
+  - name: Clean up temporary kubeconfig files
+    delegate_to: localhost
+    ansible.builtin.file:
+      path: "{{ item }}"
+      state: absent
+    loop:
+      - "{{ lookup('env', 'HOME') }}/.kube/kubeconfig_{{ inventory_hostname }}.raw"
+      - "{{ lookup('env', 'HOME') }}/.kube/kubeconfig_{{ inventory_hostname }}"

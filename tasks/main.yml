@@ -10,4 +10,8 @@
 - name:  Assert MicroK8S is running
   include_tasks: assert_is_running.yaml
 - name: Setup plugins
+  when: microk8s_plugins.enabled
   include_tasks: setup_plugins.yaml
+- name: add to localhost kubectl
+  when: add_to_local_kubectl.enabled
+  include_tasks: add_to_kubectl.yaml
