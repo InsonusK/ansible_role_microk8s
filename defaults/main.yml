@@ -1,5 +1,6 @@
 ---
 microk8s_plugins:
+  enabled: true         #feature toggle
   dns: true             # CoreDNS
   ingress: true         # Ingress controller for external access
   dashboard: true       # The Kubernetes dashboard
