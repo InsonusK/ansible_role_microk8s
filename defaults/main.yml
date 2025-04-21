@@ -1,4 +1,8 @@
 ---
+usecase: "install"    # avalible usecases
+# - install - default installation
+# - get_kubeconfig - only get kubeconfig
+
 microk8s_plugins:
   enabled: true         #feature toggle
   dns: true             # CoreDNS
@@ -15,5 +19,5 @@ route_service:          #routing 10.152.183.0/24 into local network - bug fix wh
   enabled: true         #feature toggle
   interface: enp0s3     #local network interface
 
-add_to_local_kubectl:
+get_kubeconfig:
   enabled: true         #feature toggle
