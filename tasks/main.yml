@@ -15,10 +15,11 @@
   when: usecase == "install" and route_service.enabled
   include_tasks: setup_route_service.yaml
 - name:  Assert MicroK8S is running
-  include_tasks: usecase == "install" and assert_is_running.yaml
+  when: usecase == "install"
+  include_tasks: assert_is_running.yaml
 - name: Setup plugins
   when: usecase == "install" and microk8s_plugins.enabled
   include_tasks: setup_plugins.yaml
 - name: get to kubeconfig
-  when: ( usecase == "install" or usecase == "get_kubeconfig" ) and get_kubeconfig.enabled
+  when: ( usecase == "install" and get_kubeconfig.enabled ) or usecase == "get_kubeconfig"
   include_tasks: get_kubeconfig.yaml
