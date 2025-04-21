@@ -43,14 +43,14 @@
       dest: "{{ lookup('env','HOME') }}/.kube/kubeconfig_{{ inventory_hostname }}"
       mode: '0600'
 
-  - name: Merge kubeconfig into ~/.kube/config using KUBECONFIG env
-    delegate_to: localhost
-    ansible.builtin.shell: |
-      KUBECONFIG={{ lookup('env','HOME') }}/.kube/config:{{ lookup('env','HOME') }}/.kube/kubeconfig_{{ inventory_hostname }} \
-      kubectl config view --flatten > {{ lookup('env','HOME') }}/.kube/config.merged && \
-      mv {{ lookup('env','HOME') }}/.kube/config.merged {{ lookup('env','HOME') }}/.kube/config
-    environment:
-      HOME: "{{ lookup('env','HOME') }}"
+  #- name: Merge kubeconfig into ~/.kube/config using KUBECONFIG env
+  #  delegate_to: localhost
+  #  ansible.builtin.shell: |
+  #    KUBECONFIG={{ lookup('env','HOME') }}/.kube/config:{{ lookup('env','HOME') }}/.kube/kubeconfig_{{ inventory_hostname }} \
+  #    kubectl config view --flatten > {{ lookup('env','HOME') }}/.kube/config.merged && \
+  #    mv {{ lookup('env','HOME') }}/.kube/config.merged {{ lookup('env','HOME') }}/.kube/config
+  #  environment:
+  #    HOME: "{{ lookup('env','HOME') }}"
 
   - name: Clean up temporary kubeconfig files
     delegate_to: localhost
@@ -58,5 +58,5 @@
       path: "{{ item }}"
       state: absent
     loop:
-      - "{{ lookup('env', 'HOME') }}/.kube/kubeconfig_{{ inventory_hostname }}.raw"
+    #  - "{{ lookup('env', 'HOME') }}/.kube/kubeconfig_{{ inventory_hostname }}.raw"
       - "{{ lookup('env', 'HOME') }}/.kube/kubeconfig_{{ inventory_hostname }}"
