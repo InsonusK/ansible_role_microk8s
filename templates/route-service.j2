@@ -1,10 +1,13 @@
 [Unit]
-Description=Add static route for 10.152.183.0/24
+Description=Route 10.152.183.0/24 (MicroK8s Service CIDR) via a dummy interface, isolated from VPN routing
 After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/ip route replace 10.152.183.0/24 dev {{route_service.interface}} proto static
+# "-" prefix: ignore failure on re-run once the dummy device already exists.
+ExecStartPre=-/usr/sbin/ip link add {{ route_service.interface }} type dummy
+ExecStartPre=/usr/sbin/ip link set {{ route_service.interface }} up
+ExecStart=/usr/sbin/ip route replace 10.152.183.0/24 dev {{ route_service.interface }} proto static
 
 [Install]
 WantedBy=multi-user.target

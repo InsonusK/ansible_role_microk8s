@@ -15,9 +15,12 @@ ufw:                    #Setup UFW when installed
   ingress_port:         #ingress ports
     - 443
 
-route_service:          #routing 10.152.183.0/24 into local network - bug fix when k8s inner trafic goes into VPN
+route_service:          #routing 10.152.183.0/24 (MicroK8s Service CIDR) via a dedicated dummy interface -
+                        #bug fix when k8s inner traffic goes into VPN (VPN routing/reconnects can drop or
+                        #shadow this route; a self-created dummy interface anchors it independently of any
+                        #real NIC, so no host-specific interface name is needed)
   enabled: true         #feature toggle
-  interface: enp0s3     #local network interface
+  interface: microk8s-svc0  #name of the dummy interface this role creates (not an existing NIC)
 
 get_kubeconfig:
   enabled: true         #feature toggle
