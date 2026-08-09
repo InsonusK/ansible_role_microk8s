@@ -12,6 +12,7 @@ microk8s_plugins:
 ufw:                    #Setup UFW when installed
   enabled: true         #feature toggle
   kubectl_port: 16443   #kubectl port
+  kubectl_allow_from: ""  #restrict kubectl_port to this source (CIDR/IP) - empty = open to everyone (default)
   ingress_port:         #ingress ports
     - 443
 
@@ -24,3 +25,11 @@ route_service:          #routing 10.152.183.0/24 (MicroK8s Service CIDR) via a d
 
 get_kubeconfig:
   enabled: true         #feature toggle
+
+# Address written into the saved kubeconfig's "server:" line. Empty = fall
+# back to ansible_host (or inventory_hostname). Set this explicitly when
+# ansible_host is NOT the address kubectl should actually use - e.g. when
+# the inventory connects over one address for SSH/provisioning but clients
+# are expected to reach the API over another (a VPN-internal address,
+# behind a firewall rule that only allows that subnet).
+microk8s_api_host: ""
