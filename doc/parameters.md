@@ -97,11 +97,15 @@ Firewall rules for MicroK8s, applied by [tasks/setup_ufw.yaml](../tasks/setup_uf
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enabled` | `bool` | `true` | Feature toggle. |
+| `default_incoming` | `str` | `deny` | Default UFW policy for incoming traffic - set explicitly rather than relying on whatever policy UFW already happened to have. |
+| `ssh_port` | `int` | `22` | Rate-limited (`ufw limit`, not just `allow`) - brute-force protection. This is what keeps `Enable UFW` from locking out SSH once `default_incoming: deny` is in effect. |
 | `kubectl_port` | `int` | `16443` | Opened for the kube-apiserver (kubectl access). |
 | `kubectl_allow_from` | `str` (CIDR/IP) | `""` | Restricts `kubectl_port` to this source. Empty string = open to any source (`ufw`'s `from_ip: any`) - the original, unrestricted behavior. |
 | `ingress_port` | `list[int]` | `[443]` | Opened for each listed ingress port, unrestricted (any source). |
 
 The task list also unconditionally allows inbound traffic on the `cni0` interface and routed traffic between MicroK8s' pod network and the rest of the host, regardless of `kubectl_port`/`ingress_port`.
+
+**Setting `ufw` at all replaces the whole dict** (no deep-merge across defaults/group_vars/host_vars - see [doc/setup.md](./setup.md)), so an override that only sets e.g. `kubectl_allow_from` loses `default_incoming`/`ssh_port`/everything else silently. Always spell out every key you care about, even ones equal to the default.
 
 kube-apiserver authenticates clients via mTLS regardless of `kubectl_allow_from` - an open `kubectl_port` doesn't grant access without a valid client cert. `kubectl_allow_from` is defense in depth (keeps the port itself from being reachable/probeable outside the trusted source), not the only thing standing between the API and the internet.
 

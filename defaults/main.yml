@@ -11,6 +11,8 @@ microk8s_plugins:
 
 ufw:                    #Setup UFW when installed
   enabled: true         #feature toggle
+  default_incoming: deny  #default policy for incoming traffic, set explicitly rather than relying on whatever UFW already had
+  ssh_port: 22           #rate-limited (not just allowed) - brute-force protection
   kubectl_port: 16443   #kubectl port
   kubectl_allow_from: ""  #restrict kubectl_port to this source (CIDR/IP) - empty = open to everyone (default)
   ingress_port:         #ingress ports

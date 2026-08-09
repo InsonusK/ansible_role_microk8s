@@ -8,6 +8,30 @@ How to invoke this role from a playbook, for each usecase it supports.
 - `ansible_user` must be a real, sudo-capable user on the target (added to the `microk8s` group by the role).
 - For the `get_kubeconfig` step: a `$HOME/.kube/` directory writable by whoever runs `ansible-playbook` (the role creates the file itself, but expects the parent directory or its own write permissions to already be in order).
 
+## A note on overriding dict variables
+
+`microk8s_plugins`, `ufw` and `route_service` are plain dicts, set once in [defaults/main.yml](../defaults/main.yml) - this role does not deep-merge them the way some other roles combine `defaults`/`group_vars`/`host_vars` layers. Ansible's normal variable precedence applies instead: whichever `vars:`/`group_vars`/`host_vars` scope has the highest precedence for e.g. `ufw` **replaces the entire dict**, it does not merge key-by-key with the default. So:
+
+```yaml
+# This loses default_incoming/ssh_port/ingress_port/etc. - they become
+# undefined, not "whatever the default was".
+ufw:
+  kubectl_allow_from: "10.8.1.0/24"
+```
+
+```yaml
+# Correct: repeat every key you want, even ones equal to the default.
+ufw:
+  enabled: true
+  default_incoming: deny
+  ssh_port: 22
+  kubectl_port: 16443
+  kubectl_allow_from: "10.8.1.0/24"
+  ingress_port:
+    - 80
+    - 443
+```
+
 ## Quick start
 
 Minimal inventory + playbook to install MicroK8s on a host, with every default left as-is.

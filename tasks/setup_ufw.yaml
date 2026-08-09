@@ -1,4 +1,26 @@
 ---
+# Set explicitly rather than relying on whatever UFW's own factory default
+# happens to be - this role is the one enabling UFW below, so it should be
+# the one deciding the baseline policy too, not an implicit assumption.
+- name: Set default incoming policy
+  become: true
+  ufw:
+    direction: incoming
+    default: "{{ ufw.default_incoming }}"
+  when: ufw.default_incoming is defined
+
+# Rate-limited (ufw "limit"), not just allowed - blocks an IP that hits this
+# port too many times in a row, so it's the one port that must be reachable
+# for the "Enable UFW" task below to not lock out SSH access, but still
+# gets brute-force protection rather than being wide open.
+- name: Rate-limit SSH through UFW
+  become: true
+  ufw:
+    rule: limit
+    port: "{{ ufw.ssh_port }}"
+    proto: tcp
+  when: ufw.ssh_port is defined
+
 - name: Allow MicroK8s kubectl port through UFW
   become: true
   ufw:
