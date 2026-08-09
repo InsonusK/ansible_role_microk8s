@@ -26,7 +26,13 @@
     state: started
   register: service_status
   failed_when: service_status.status["ExecMainStatus"] != "0"
-  
+
+- name: Check dummy interface exists and is up
+  command: "ip link show {{ route_service.interface }}"
+  register: iface_check
+  changed_when: false
+  failed_when: iface_check.rc != 0 or 'UP' not in iface_check.stdout
+
 - name: Check if route exists
   command: ip route show 10.152.183.0/24
   register: route_check
