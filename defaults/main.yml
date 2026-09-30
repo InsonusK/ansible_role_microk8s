@@ -35,3 +35,9 @@ get_kubeconfig:
 # are expected to reach the API over another (a VPN-internal address,
 # behind a firewall rule that only allows that subnet).
 microk8s_api_host: ""
+
+# Extra names/IPs added to the kube-apiserver certificate (port 16443) on top
+# of MicroK8s' own "kubernetes.*" names and host IPs. Needed when kubectl
+# reaches the API by a DNS name - e.g. set to [microk8s_api_host] when that is
+# a hostname. Entries matching ^[0-9.]+$ become IP SANs, everything else DNS.
+microk8s_api_sans: []
