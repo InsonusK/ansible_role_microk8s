@@ -1,0 +1,36 @@
+---
+# Adds extra Subject Alternative Names to the kube-apiserver certificate
+# (port 16443). See doc/parameters.md#microk8s_api_sans.
+#
+# MicroK8s generates server.crt itself from csr.conf.template, with SANs for
+# "kubernetes.*" names and the host's own IPs only. A kubeconfig pointing at
+# a DNS name (e.g. a VPN-internal hostname) therefore fails TLS verification
+# with "certificate is valid for kubernetes, ..., not <name>" until that name
+# is added to the template.
+
+# One line per entry, inserted before MicroK8s' own "#MOREIPS" marker (where
+# its kicker appends detected host IPs). Indices start at 100 so they never
+# collide with MicroK8s' built-in DNS.1-5 / IP.1-2. The regexp keys on the
+# index, so re-runs replace the line instead of duplicating it. An entry
+# removed from the list is NOT removed from the template - delete its line
+# by hand if that matters.
+- name: Add extra SANs to MicroK8s API server certificate template
+  become: true
+  ansible.builtin.lineinfile:
+    path: /var/snap/microk8s/current/certs/csr.conf.template
+    regexp: '^{{ "IP" if item is match("^[0-9.]+$") else "DNS" }}\.{{ 100 + idx }} ='
+    line: '{{ "IP" if item is match("^[0-9.]+$") else "DNS" }}.{{ 100 + idx }} = {{ item }}'
+    insertbefore: '^#MOREIPS'
+  loop: "{{ microk8s_api_sans }}"
+  loop_control:
+    index_var: idx
+  register: api_sans_template
+
+# The template alone changes nothing until server.crt is re-issued. Only
+# server.crt is regenerated - the cluster CA stays the same, so kubeconfigs
+# already handed out keep working. kube-apiserver restarts, the "Assert
+# MicroK8s is running" step that follows in tasks/main.yml waits it out.
+- name: Regenerate MicroK8s API server certificate
+  become: true
+  when: api_sans_template is changed
+  ansible.builtin.command: microk8s refresh-certs --cert server.crt

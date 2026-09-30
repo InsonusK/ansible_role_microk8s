@@ -14,6 +14,9 @@
 - name:  Setup route-service
   when: usecase == "install" and route_service.enabled
   include_tasks: setup_route_service.yaml
+- name: Setup API server certificate SANs
+  when: usecase == "install" and microk8s_api_sans | length > 0
+  include_tasks: setup_api_sans.yaml
 - name:  Assert MicroK8S is running
   when: usecase == "install"
   include_tasks: assert_is_running.yaml

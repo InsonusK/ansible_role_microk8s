@@ -50,6 +50,7 @@ Not meant to be overridden - this is the allow-list `usecase` is validated again
 | `route_service` | `dict` | see above | [tasks/setup_route_service.yaml](../tasks/setup_route_service.yaml), [templates/route-service.j2](../templates/route-service.j2) |
 | `get_kubeconfig` | `dict` | `{enabled: true}` | [tasks/main.yml](../tasks/main.yml) - whether the `install` usecase also fetches a kubeconfig at the end. |
 | `microk8s_api_host` | `str` | `""` | [tasks/get_kubeconfig.yaml](../tasks/get_kubeconfig.yaml) - overrides the API address written into the saved kubeconfig. |
+| `microk8s_api_sans` | `list[str]` | `[]` | [tasks/setup_api_sans.yaml](../tasks/setup_api_sans.yaml) - extra SANs for the kube-apiserver certificate. |
 
 ## `usecase`
 
@@ -163,6 +164,22 @@ See [doc/setup.md](./setup.md#fetching-a-kubeconfig) for what the fetched file l
 ```yaml
 # host_vars/<host>/microk8s_dev.yaml
 microk8s_api_host: "{{ connections.vpn_ip.host }}"   # example: a custom per-host "connections" scheme
+```
+
+## `microk8s_api_sans`
+
+| Type | Default | Description |
+| --- | --- | --- |
+| `list[str]` (hostnames/IPv4) | `[]` | Extra Subject Alternative Names for the kube-apiserver certificate on port 16443. Applied under `usecase: install` only; empty = step skipped. |
+
+MicroK8s issues `server.crt` itself from `/var/snap/microk8s/current/certs/csr.conf.template`, covering only `kubernetes.*` names and the host's own IPs. If `microk8s_api_host` is a DNS name, kubectl fails with `x509: certificate is valid for kubernetes, ..., not <name>` until that name is listed here.
+
+[tasks/setup_api_sans.yaml](../tasks/setup_api_sans.yaml) writes each entry as `DNS.<100+i>` (or `IP.<100+i>` for entries matching `^[0-9.]+$`) before the template's `#MOREIPS` marker, and runs `microk8s refresh-certs --cert server.crt` if the template changed. The cluster CA is unchanged, so existing kubeconfigs stay valid. Removing an entry from the list does not remove its line from the template.
+
+```yaml
+microk8s_api_host: k8s-dev.example
+microk8s_api_sans:
+  - "{{ microk8s_api_host }}"
 ```
 
 ## Internal / computed facts
