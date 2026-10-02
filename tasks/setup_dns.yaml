@@ -1,0 +1,110 @@
+---
+# Reconciles the CoreDNS config (ConfigMap kube-system/coredns, key Corefile)
+# with microk8s_dns. See doc/parameters.md#microk8s_dns.
+#
+# Why not `microk8s enable dns:<ip>` (microk8s_plugins.dns: "<ip>"): it only
+# runs while the addon is disabled, so it never reaches an already-running
+# cluster, and it can only set the one global upstream - not per-zone servers.
+#
+# The existing Corefile is edited, not regenerated from a template, so whatever
+# the dns addon itself writes (plugins, cluster domain) is preserved:
+#   - upstream: only the address list of the "forward ." line of the default
+#     server block is replaced; empty = the line is left as is.
+#   - zones: one server block per zone, kept between BEGIN/END markers; re-runs
+#     replace everything between them, so a zone removed from the list (or the
+#     whole list emptied) is removed from the Corefile too. That is why this
+#     file runs whenever the dns addon is managed, not only when zones is set.
+# CoreDNS picks the change up by itself through its "reload" plugin (part of
+# the addon's default Corefile) - no pod restart needed.
+
+- name: Validate microk8s_dns
+  ansible.builtin.assert:
+    that:
+      - microk8s_dns_upstream is sequence and microk8s_dns_upstream is not string
+      - microk8s_dns_zones is sequence and microk8s_dns_zones is not string
+      - microk8s_dns_zones | rejectattr('zone', 'defined') | list | length == 0
+      - microk8s_dns_zones | rejectattr('servers', 'defined') | list | length == 0
+      - microk8s_dns_zones | map(attribute='servers') | select('string') | list | length == 0
+      - microk8s_dns_zones | map(attribute='servers') | reject('truthy') | list | length == 0
+    fail_msg: >-
+      microk8s_dns.upstream must be a list of DNS servers and microk8s_dns.zones
+      a list of {zone: <name>, servers: [<ip>, ...]} with a non-empty servers list.
+  vars:
+    microk8s_dns_upstream: "{{ microk8s_dns.upstream | default([]) }}"
+    microk8s_dns_zones: "{{ microk8s_dns.zones | default([]) }}"
+
+- name: Get current CoreDNS Corefile
+  become: true
+  ansible.builtin.command:
+    argv:
+      - microk8s.kubectl
+      - --namespace=kube-system
+      - get
+      - configmap
+      - coredns
+      - --output=jsonpath={.data.Corefile}
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  register: microk8s_dns_current
+
+- name: Assert CoreDNS is deployed
+  ansible.builtin.assert:
+    that:
+      - microk8s_dns_current.rc == 0
+      - microk8s_dns_current.stdout | length > 0
+    fail_msg: >-
+      ConfigMap kube-system/coredns not found - microk8s_dns needs the dns addon
+      (microk8s_plugins.dns: true). kubectl said: {{ microk8s_dns_current.stderr }}
+
+- name: Build desired CoreDNS Corefile
+  ansible.builtin.set_fact:
+    microk8s_dns_corefile: "{{ (_base ~ '\n' ~ (_zones_block | default('', true))) | trim ~ '\n' }}"
+  vars:
+    _marker_begin: "# BEGIN microk8s_dns zones (managed by Ansible role InsonusK.MicroK8S)"
+    _marker_end: "# END microk8s_dns zones"
+    _upstream: "{{ microk8s_dns.upstream | default([]) }}"
+    _zones: "{{ microk8s_dns.zones | default([]) }}"
+    # Drop our previous zone blocks first, so the "forward ." regexp below only
+    # sees the addon's own default server block.
+    _without_zones: >-
+      {{ microk8s_dns_current.stdout
+         | regex_replace('(?s)# BEGIN microk8s_dns zones.*?# END microk8s_dns zones\n?', '')
+         | trim }}
+    # Only the addresses are replaced; a trailing "{ options }" block, if any, stays.
+    _base: >-
+      {{ _without_zones
+         | regex_replace('(?m)^(\s*forward \.)[^{\n]*?(?=\s*(\{|$))', '\1 ' ~ (_upstream | join(' ')))
+         if _upstream | length > 0 else _without_zones }}
+    _zones_block: |-
+      {% if _zones | length > 0 %}
+      {{ _marker_begin }}
+      {% for z in _zones %}
+      {{ z.zone | regex_replace('\.$', '') }}:53 {
+          errors
+          cache 30
+          forward . {{ z.servers | join(' ') }}
+      }
+      {% endfor %}
+      {{ _marker_end }}
+      {% endif %}
+
+- name: Show CoreDNS Corefile change
+  when: microk8s_dns_corefile != (microk8s_dns_current.stdout | trim ~ '\n')
+  ansible.builtin.debug:
+    msg: "{{ microk8s_dns_corefile.split('\n') }}"
+
+# argv + to_json: the Corefile goes to kubectl as a single argument, no shell
+# quoting of its braces/newlines involved.
+- name: Apply CoreDNS Corefile
+  become: true
+  when: microk8s_dns_corefile != (microk8s_dns_current.stdout | trim ~ '\n')
+  ansible.builtin.command:
+    argv:
+      - microk8s.kubectl
+      - --namespace=kube-system
+      - patch
+      - configmap
+      - coredns
+      - --type=merge
+      - "--patch={{ {'data': {'Corefile': microk8s_dns_corefile}} | to_json }}"

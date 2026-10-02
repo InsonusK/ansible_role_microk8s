@@ -23,6 +23,9 @@
 - name: Setup plugins
   when: usecase == "install" and microk8s_plugins.enabled
   include_tasks: setup_plugins.yaml
+- name: Setup CoreDNS upstream servers
+  when: usecase == "install" and microk8s_plugins.enabled and (microk8s_plugins.dns | default(false))
+  include_tasks: setup_dns.yaml
 - name: get to kubeconfig
   when: ( usecase == "install" and get_kubeconfig.enabled ) or usecase == "get_kubeconfig"
   include_tasks: get_kubeconfig.yaml

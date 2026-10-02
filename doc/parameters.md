@@ -15,6 +15,10 @@ microk8s_plugins:
   ingress: true          # Ingress controller for external access
   dashboard: true        # The Kubernetes dashboard
 
+microk8s_dns:           # CoreDNS upstream servers, applied when microk8s_plugins.dns is enabled
+  upstream: []           # servers for everything not matched by zones - [] = addon default (host resolvers)
+  zones: []              # per-zone servers (split DNS): [{zone: <name>, servers: [<ip>, ...]}]
+
 ufw:                    # Setup UFW when installed
   enabled: true          # feature toggle
   kubectl_port: 16443    # kubectl port
@@ -46,6 +50,7 @@ Not meant to be overridden - this is the allow-list `usecase` is validated again
 | --- | --- | --- | --- |
 | `usecase` | `str` | `install` | [tasks/main.yml](../tasks/main.yml) - selects which task lists run this invocation. |
 | `microk8s_plugins` | `dict` | see above | [tasks/setup_plugins.yaml](../tasks/setup_plugins.yaml) |
+| `microk8s_dns` | `dict` | `{upstream: [], zones: []}` | [tasks/setup_dns.yaml](../tasks/setup_dns.yaml) - CoreDNS upstream and per-zone DNS servers. |
 | `ufw` | `dict` | see above | [tasks/setup_ufw.yaml](../tasks/setup_ufw.yaml) |
 | `route_service` | `dict` | see above | [tasks/setup_route_service.yaml](../tasks/setup_route_service.yaml), [templates/route-service.j2](../templates/route-service.j2) |
 | `get_kubeconfig` | `dict` | `{enabled: true}` | [tasks/main.yml](../tasks/main.yml) - whether the `install` usecase also fetches a kubeconfig at the end. |
@@ -58,7 +63,7 @@ Selects which task lists [tasks/main.yml](../tasks/main.yml) runs. Must be one o
 
 | Value | What runs |
 | --- | --- |
-| `install` | Everything: install MicroK8s, `ufw` (if `ufw.enabled`), `route_service` (if `route_service.enabled`), wait for the cluster to be ready, `microk8s_plugins` (if `microk8s_plugins.enabled`), then kubeconfig fetch (if `get_kubeconfig.enabled`). |
+| `install` | Everything: install MicroK8s, `ufw` (if `ufw.enabled`), `route_service` (if `route_service.enabled`), wait for the cluster to be ready, `microk8s_plugins` (if `microk8s_plugins.enabled`), `microk8s_dns` (if the `dns` addon is enabled), then kubeconfig fetch (if `get_kubeconfig.enabled`). |
 | `get_kubeconfig` | Only [tasks/get_kubeconfig.yaml](../tasks/get_kubeconfig.yaml) - re-fetch the kubeconfig without touching the cluster. Use this to refresh `~/.kube/kubeconfig_<host>` after the cluster's certs were regenerated, without re-running the full install. |
 
 ```yaml
@@ -89,6 +94,29 @@ microk8s_plugins:
   ingress: true
   dashboard: false          # explicitly disabled - the role will call microk8s.disable
   metallb: "10.0.0.1-10.0.0.10"   # enabled with an argument
+```
+
+## `microk8s_dns`
+
+Which DNS servers CoreDNS (the `dns` addon) forwards queries to, driven by [tasks/setup_dns.yaml](../tasks/setup_dns.yaml). Runs under `usecase: install` whenever `microk8s_plugins.enabled` and `microk8s_plugins.dns` are on.
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `upstream` | `list[str]` | `[]` | Servers for every name not matched by `zones`. Replaces the addresses of the `forward .` line in the addon's default server block. `[]` = the line is left as is (MicroK8s default: `/etc/resolv.conf`, i.e. the host's resolvers). |
+| `zones` | `list[dict]` | `[]` | Split DNS: each `{zone, servers}` becomes its own CoreDNS server block `<zone>:53 { forward . <servers> }`, so names in that zone always go to those servers. `servers` is a non-empty list; a trailing dot in `zone` is ignored. |
+
+Why it exists: by default CoreDNS forwards to the host's `/etc/resolv.conf` as one flat list and picks a server from it at random. A host whose `systemd-resolved` routes a private zone to a specific server (e.g. a VPN DNS pushed per link) loses that routing in the flat list - pods then get `NXDOMAIN` for that zone from the public servers most of the time, while the host itself resolves fine. `zones` restores the per-zone routing inside the cluster.
+
+Why not `microk8s_plugins.dns: "<ip>"` (`microk8s enable dns:<ip>`): addons are only enabled while disabled, so the argument never reaches a cluster whose `dns` addon is already on, and it can only set the global upstream, not per-zone servers.
+
+How it is applied: the existing Corefile in ConfigMap `kube-system/coredns` is edited, not regenerated, so everything else the addon put there stays. Zone blocks live between `# BEGIN microk8s_dns zones` / `# END microk8s_dns zones` markers and are rewritten on every run - a zone removed from the list (or an emptied list) is removed from the Corefile too. The ConfigMap is patched only if the result differs; CoreDNS reloads it by itself (`reload` plugin), no restart. If the `dns` addon is re-enabled from scratch it rewrites the Corefile with defaults - the next role run puts the settings back.
+
+```yaml
+microk8s_dns:
+  # upstream: [1.1.1.1, 8.8.8.8]   # optional; default = host resolvers
+  zones:
+    - zone: corp.internal          # VPN-internal zone public resolvers don't know
+      servers: [10.0.0.53]
 ```
 
 ## `ufw`
@@ -190,6 +218,8 @@ Not role inputs - set by the role itself while it runs. Listed here because they
 | --- | --- | --- |
 | `microk8s_api_ip` | [tasks/get_kubeconfig.yaml](../tasks/get_kubeconfig.yaml) | The address substituted for `127.0.0.1` in the saved kubeconfig - `microk8s_api_host` if set, otherwise `ansible_host`, otherwise `inventory_hostname`. |
 | `microk8s_status` | [tasks/setup_plugins.yaml](../tasks/setup_plugins.yaml) | Parsed `microk8s status --format yaml` output, used to enumerate addons. |
+| `microk8s_dns_current` | [tasks/setup_dns.yaml](../tasks/setup_dns.yaml) | Raw `kubectl get` result with the Corefile currently in ConfigMap `kube-system/coredns`. |
+| `microk8s_dns_corefile` | [tasks/setup_dns.yaml](../tasks/setup_dns.yaml) | The Corefile the role wants, compared to `microk8s_dns_current` to decide whether to patch. |
 
 ## Implicit requirements (not role variables)
 
