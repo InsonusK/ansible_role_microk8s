@@ -13,7 +13,7 @@ Ubuntu 22.04+
 Role Variables
 --------------
 
-See [doc/parameters.md](doc/parameters.md) for the full variable reference (`usecase`, `microk8s_plugins`, `ufw`, `route_service`, `get_kubeconfig`), with defaults and examples. Raw defaults: [defaults/main.yml](./defaults/main.yml).
+See [doc/parameters.md](doc/parameters.md) for the full variable reference (`usecase`, `microk8s_plugins`, `microk8s_dns`, `ufw`, `route_service`, `get_kubeconfig`), with defaults and examples. Raw defaults: [defaults/main.yml](./defaults/main.yml).
 
 Dependencies
 ------------

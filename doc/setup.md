@@ -79,9 +79,10 @@ In order (see [tasks/main.yml](../tasks/main.yml)):
 4. Sets up the `route_service` dummy-interface route fix, if `route_service.enabled` ([tasks/setup_route_service.yaml](../tasks/setup_route_service.yaml)).
 5. Waits for MicroK8s to report ready ([tasks/assert_is_running.yaml](../tasks/assert_is_running.yaml)).
 6. Reconciles addons, if `microk8s_plugins.enabled` ([tasks/setup_plugins.yaml](../tasks/setup_plugins.yaml)).
-7. Fetches a kubeconfig, if `get_kubeconfig.enabled` ([tasks/get_kubeconfig.yaml](../tasks/get_kubeconfig.yaml)).
+7. Applies `microk8s_dns` to the CoreDNS config, if the `dns` addon is enabled ([tasks/setup_dns.yaml](../tasks/setup_dns.yaml)).
+8. Fetches a kubeconfig, if `get_kubeconfig.enabled` ([tasks/get_kubeconfig.yaml](../tasks/get_kubeconfig.yaml)).
 
-Each of steps 3-4 and 6-7 can be turned off independently - see [doc/parameters.md](./parameters.md) for the toggles.
+Each of steps 3-4 and 6-8 can be turned off independently - see [doc/parameters.md](./parameters.md) for the toggles.
 
 ## Fetching a kubeconfig
 
@@ -165,6 +166,20 @@ roles:
         dns: true
         ingress: false
         dashboard: false
+```
+
+### Resolving a private (e.g. VPN-internal) zone inside the cluster
+
+When the host reaches a private DNS zone through a VPN, pods may still get `NXDOMAIN` for it - see [doc/parameters.md#microk8s_dns](./parameters.md#microk8s_dns) for why. Route that zone to its server explicitly:
+
+```yaml
+roles:
+  - role: InsonusK.MicroK8S
+    vars:
+      microk8s_dns:
+        zones:
+          - zone: corp.internal
+            servers: [10.0.0.53]
 ```
 
 ### Install without fetching a kubeconfig

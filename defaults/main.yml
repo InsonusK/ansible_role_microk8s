@@ -9,6 +9,12 @@ microk8s_plugins:
   ingress: true         # Ingress controller for external access
   dashboard: true       # The Kubernetes dashboard
 
+microk8s_dns:           #CoreDNS upstream servers - applied when microk8s_plugins.dns is enabled; both empty = addon defaults
+  upstream: []          #DNS servers for everything not matched by zones - [] = keep the addon's default (forward . /etc/resolv.conf, i.e. the host's resolvers)
+  zones: []             #per-zone servers (split DNS), e.g. a VPN-internal zone the public resolvers don't know:
+                        #  - zone: corp.internal
+                        #    servers: [10.0.0.53]
+
 ufw:                    #Setup UFW when installed
   enabled: true         #feature toggle
   default_incoming: deny  #default policy for incoming traffic, set explicitly rather than relying on whatever UFW already had
